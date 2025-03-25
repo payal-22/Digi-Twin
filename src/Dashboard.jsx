@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // import { Link } from 'react-router-dom';
 import PieChart from './PieChart';
 import Sidebar from './SideBar';
-
+import AddGoalModal from './AddGoalModal';
+import { db, auth } from './firebase/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
- 
+  const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
+  const [savingsGoals, setSavingsGoals] = useState([]);
   // Sample data for the charts and displays
   const monthlyData = {
     spent: 1245.30,
@@ -32,18 +35,43 @@ const Dashboard = () => {
     { name: 'Amazon Purchase', amount: 32.45, category: 'Shopping', color: 'bg-green-500' }
   ];
  
-  const savingsGoals = [
-    { name: 'Vacation', target: 2000, saved: 1400, percentComplete: 70 },
-    { name: 'New Laptop', target: 1200, saved: 300, percentComplete: 25 },
-    { name: 'Emergency Fund', target: 5000, saved: 2750, percentComplete: 55 }
-  ];
+  // const savingsGoals = [
+  //   { name: 'Vacation', target: 2000, saved: 1400, percentComplete: 70 },
+  //   { name: 'New Laptop', target: 1200, saved: 300, percentComplete: 25 },
+  //   { name: 'Emergency Fund', target: 5000, saved: 2750, percentComplete: 55 }
+  // ];
 
   // Function to handle the "Add New Goal" button click
-  const handleAddNewGoal = () => {
-    setActiveTab('goals');
-    // We'll pass this value to trigger the modal in Goals component
-    localStorage.setItem('openAddGoalModal', 'true');
+  const fetchSavingsGoals = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const goalsQuery = query(
+        collection(db, 'savingsGoals'), 
+        where('userId', '==', user.uid)
+      );
+
+      const querySnapshot = await getDocs(goalsQuery);
+      const fetchedGoals = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setSavingsGoals(fetchedGoals);
+    } catch (error) {
+      console.error('Error fetching savings goals:', error);
+    }
   };
+// Fetch goals when component mounts and user changes
+useEffect(() => {
+  fetchSavingsGoals();
+}, []);
+
+// Function to handle the "Add New Goal" button click
+const handleAddNewGoal = () => {
+  setIsAddGoalModalOpen(true);
+};
  
   return (
     <div className="flex h-screen bg-gray-100 ">
@@ -164,7 +192,7 @@ const Dashboard = () => {
               </div>
               <div className="space-y-6">
                 {savingsGoals.map((goal, index) => (
-                  <div key={index} className="mb-4">
+                  <div key={goal.id} className="mb-4">
                     <div className="flex justify-between items-center mb-2">
                       <div className="font-medium">{goal.name}</div>
                       <div className="text-gray-700">
@@ -199,6 +227,11 @@ const Dashboard = () => {
             </div>
           </div>
         )}
+        <AddGoalModal 
+          isOpen={isAddGoalModalOpen}
+          onClose={() => setIsAddGoalModalOpen(false)}
+          onGoalAdded={fetchSavingsGoals}
+        />
        
         {activeTab !== 'dashboard' && (
           <div className="bg-white p-10 rounded-lg shadow-md text-center">
