@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-// import { Link } from 'react-router-dom';
 import PieChart from './PieChart';
 import Sidebar from './SideBar';
 import AddGoalModal from './AddGoalModal';
 import { db, auth } from './firebase/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import PlaidLink from './components/PlaidLink';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
   const [savingsGoals, setSavingsGoals] = useState([]);
+  const [recentExpenses, setRecentExpenses] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [isPlaidConnected, setIsPlaidConnected] = useState(false);
+
   // Sample data for the charts and displays
   const monthlyData = {
     spent: 1245.30,
@@ -17,31 +21,20 @@ const Dashboard = () => {
     remaining: 754.70,
     percentSpent: 62.3
   };
- 
-  const expenses = [
-    { category: "Housing", value: 450.00, color: "#44FF07" }, // purple
-    { category: "Food", value: 398.50, color: "#FED60A" }, // Orange
-    { category: "Transport", value: 256.40, color:
-     "#FB0007" }, // Blue
-    { category: "Shopping", value: 87.90, color: "#3700FF" }, // Green
-    { category: "Other", value: 52.50, color: "#FB13F3" } // Gray
-  ];
- 
-  const recentExpenses = [
-    { name: 'Grocery Shopping', amount: 78.35, category: 'Food', color: 'bg-orange-500' },
-    { name: 'Gas Station', amount: 45.00, category: 'Transport', color: 'bg-blue-500' },
-    { name: 'Coffee Shop', amount: 4.75, category: 'Food', color: 'bg-orange-500' },
-    { name: 'Internet Bill', amount: 59.99, category: 'Housing', color: 'bg-purple-500' },
-    { name: 'Amazon Purchase', amount: 32.45, category: 'Shopping', color: 'bg-green-500' }
-  ];
- 
-  // const savingsGoals = [
-  //   { name: 'Vacation', target: 2000, saved: 1400, percentComplete: 70 },
-  //   { name: 'New Laptop', target: 1200, saved: 300, percentComplete: 25 },
-  //   { name: 'Emergency Fund', target: 5000, saved: 2750, percentComplete: 55 }
-  // ];
 
-  // Function to handle the "Add New Goal" button click
+  // Helper function for category colors
+  const getCategoryColor = (category) => {
+    const colors = {
+      'Housing': '#44FF07',
+      'Food': '#FED60A',
+      'Transport': '#FB0007',
+      'Shopping': '#3700FF',
+      'Other': '#FB13F3'
+    };
+    return colors[category] || '#CCCCCC';
+  };
+
+  // Function to fetch savings goals
   const fetchSavingsGoals = async () => {
     try {
       const user = auth.currentUser;
@@ -63,15 +56,69 @@ const Dashboard = () => {
       console.error('Error fetching savings goals:', error);
     }
   };
-// Fetch goals when component mounts and user changes
-useEffect(() => {
-  fetchSavingsGoals();
-}, []);
 
-// Function to handle the "Add New Goal" button click
-const handleAddNewGoal = () => {
-  setIsAddGoalModalOpen(true);
-};
+  // Fetch transactions
+  const fetchTransactions = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Check if Plaid is connected
+      const plaidDoc = await getDocs(
+        query(collection(db, 'users', user.uid, 'plaid'), 
+        where('access_token', '!=', null))
+      );
+      setIsPlaidConnected(!plaidDoc.empty);
+
+      // Get recent transactions
+      const transactionsQuery = query(
+        collection(db, 'users', user.uid, 'transactions'),
+        orderBy('date', 'desc'),
+        limit(5)
+      );
+      const querySnapshot = await getDocs(transactionsQuery);
+      const fetchedTransactions = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().date.toDate()
+      }));
+      setRecentExpenses(fetchedTransactions);
+
+      // Get transactions for pie chart
+      const allTransactionsQuery = query(
+        collection(db, 'users', user.uid, 'transactions')
+      );
+      const allTransactionsSnapshot = await getDocs(allTransactionsQuery);
+      
+      // Group by category
+      const categoryMap = {};
+      allTransactionsSnapshot.forEach((doc) => {
+        const transaction = doc.data();
+        const category = transaction.category || 'Other';
+        categoryMap[category] = (categoryMap[category] || 0) + Math.abs(transaction.amount); });
+
+      // Convert to array for PieChart
+      const categoryData = Object.keys(categoryMap).map((category) => ({
+        category,
+        value: categoryMap[category],
+        color: getCategoryColor(category)
+      }));
+      setExpenses(categoryData);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    }
+  };
+
+  // Fetch goals and transactions when component mounts
+  useEffect(() => {
+    fetchSavingsGoals();
+    fetchTransactions();
+  }, []);
+
+  // Function to handle the "Add New Goal" button click
+  const handleAddNewGoal = () => {
+    setIsAddGoalModalOpen(true);
+  };
  
   return (
     <div className="flex h-screen bg-gray-100 ">
@@ -80,6 +127,7 @@ const handleAddNewGoal = () => {
      
       {/* Main Content */}
       <div className="flex-1 lg:ml-64 p-10 overflow-y-auto">
+        
         <div className="flex justify-between items-center mb-6">
           <div className="text-2xl font-bold text-gray-800">
             February 2025
@@ -140,7 +188,7 @@ const handleAddNewGoal = () => {
                 <div className="w-1/2">
                   <div className="flex flex-col items-center">
                     <h2 className="text-lg font-semibold">Expense Breakdown</h2>
-                      <PieChart data={expenses} />
+                    <PieChart data={expenses} />
                   </div>
                 </div>
                 <div className="w-1/2 flex flex-col justify-center">
@@ -149,7 +197,7 @@ const handleAddNewGoal = () => {
                       <div className={`w-3 h-3 rounded-full mr-2`} style={{ backgroundColor: item.color }}></div>
                       <div className="flex justify-between w-full">
                         <span>{item.category}</span>
-                        <span className="font-medium">${item.value}</span>
+                        <span className="font-medium">${item.value.toFixed(2)}</span>
                       </div>
                     </div>
                   ))}
@@ -164,17 +212,20 @@ const handleAddNewGoal = () => {
                 Recent Expenses
               </div>
               <div className="space-y-4">
-                {recentExpenses.map((expense, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded transition-colors">
+                {recentExpenses.map((expense) => (
+                  <div key={expense.id} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded transition-colors">
                     <div className="flex items-center">
-                      <div className={`w-3 h-3 ${expense.color} rounded-full mr-3`}></div>
+                      <div 
+                        className="w-3 h-3 rounded-full mr-3" 
+                        style={{ backgroundColor: getCategoryColor(expense.category) }}
+                      ></div>
                       <div>
                         <div className="font-medium">{expense.name}</div>
                         <div className="text-xs text-gray-500">{expense.category}</div>
                       </div>
                     </div>
                     <div className="text-gray-700 font-medium">
-                      ${expense.amount.toFixed(2)}
+                      ${Math.abs(expense.amount).toFixed(2)}
                     </div>
                   </div>
                 ))}
@@ -191,7 +242,7 @@ const handleAddNewGoal = () => {
                 Savings Goals
               </div>
               <div className="space-y-6">
-                {savingsGoals.map((goal, index) => (
+                {savingsGoals.map((goal) => (
                   <div key={goal.id} className="mb-4">
                     <div className="flex justify-between items-center mb-2">
                       <div className="font-medium">{goal.name}</div>
@@ -225,6 +276,15 @@ const handleAddNewGoal = () => {
                 </button>
               </div>
             </div>
+
+            {/* Plaid Connection */}
+            {!isPlaidConnected && (
+              <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
+                <div className="text-lg font-semibold mb-4">Connect Your Bank</div>
+                <p className="mb-4">Connect your bank account to automatically track transactions.</p>
+                <PlaidLink onSuccess={fetchTransactions} />
+              </div>
+            )}
           </div>
         )}
         <AddGoalModal 
@@ -244,6 +304,5 @@ const handleAddNewGoal = () => {
     </div>
   );
 };
-
 
 export default Dashboard;
