@@ -27,12 +27,13 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         {/* Navigation Links */}
         <nav className="space-y-1">
           {[
-            { name: "Dashboard", id: "dashboard", icon: "📊" },
-            { name: "Expenses", id: "expenses", icon: "💰" },
-            { name: "Reports", id: "reports", icon: "📝" },
-            { name: "Goals", id: "goals", icon: "🎯" },
-            { name: "Budget", id: "budget", icon: "💵" },
-            { name: "Settings", id: "settings", icon: "⚙️" },
+            { name: "Dashboard", id: "dashboard", icon: "📊", path: "/dashboard" },
+            { name: "Expenses", id: "expenses", icon: "💰", path: "/expenses" },
+            { name: "Reports", id: "reports", icon: "📝", path: "/reports" },
+            { name: "Goals", id: "goals", icon: "🎯", path: "/goals" },
+            { name: "Budget", id: "budget", icon: "💵", path: "/budget" },
+            { name: "Settings", id: "settings", icon: "⚙️", path: "/settings" },
+            { name: "SIP Calculator", id: "SIPCalculator", icon: "💲", path: "/SIPCalculator" }
           ].map((item) => (
             <button
               key={item.id}
