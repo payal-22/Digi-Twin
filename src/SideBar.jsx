@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, onAddExpenseClick }) => {
   const [isOpen, setIsOpen] = useState(false); // Keeps track of mobile sidebar state
 
   return (
@@ -52,7 +52,15 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         </nav>
 
         {/* Add Expense Button */}
-        <button className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-full w-full mt-6 transition duration-200 flex items-center justify-center">
+        <button 
+          className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-full w-full mt-6 transition duration-200 flex items-center justify-center"
+          onClick={() => {
+            if (onAddExpenseClick) {
+              onAddExpenseClick();
+              setIsOpen(false); // Close sidebar on mobile when button is clicked
+            }
+          }}
+        >
           <span className="mr-2">+</span> Add Expense
         </button>
       </div>
@@ -69,4 +77,3 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 };
 
 export default Sidebar;
-

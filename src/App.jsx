@@ -2,8 +2,9 @@ import './App.css';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './Dashboard';
-import Auth from './components/Auth'; // Using your existing Auth component
-import Goals from './Goals'; // Import the new Goals component
+import Auth from './components/Auth';
+import AccountSetup from './AccountSetUp.jsx'; // Import the AccountSetup component
+import Goals from './Goals';
 import { auth } from './firebase/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -32,26 +33,32 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route 
-            path="/" 
-            element={user ? <Navigate to="/dashboard" /> : <Auth />} 
+          {/* Public Routes */}
+          <Route
+            path="/"
+            element={user ? <Navigate to="/dashboard" /> : <Auth />}
           />
-          <Route 
-            path="/login" 
-            element={user ? <Navigate to="/dashboard" /> : <Auth />} 
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/dashboard" /> : <Auth />}
           />
-          <Route 
-            path="/dashboard" 
-            element={user ? <Dashboard /> : <Navigate to="/login" />} 
+
+          {/* Protected Routes */}
+          <Route
+            path="/setup"
+            element={user ? <AccountSetup /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/goals" 
-            element={user ? <Goals /> : <Navigate to="/login" />} 
+          <Route
+            path="/dashboard"
+            element={user ? <Dashboard /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="*" 
-            element={<Navigate to="/" />} 
+          <Route
+            path="/goals"
+            element={user ? <Goals /> : <Navigate to="/login" />}
           />
+
+          {/* Catch-all Route */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
     </div>

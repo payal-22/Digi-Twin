@@ -1,49 +1,196 @@
 import React, { useState, useEffect } from 'react';
-// import { Link } from 'react-router-dom';
-import PieChart from './PieChart.jsx'
-import Sidebar from './SideBar.jsx'
-import SIPCaluclator from './SIPCalculator.jsx'
+import PieChart from './PieChart.jsx';
+import Sidebar from './SideBar.jsx';
+import SIPCaluclator from './SIPCalculator.jsx';
 import AddGoalModal from './AddGoalModal';
+import AddExpenseModal from './ExpenseModal.jsx';
 import { db, auth } from './firebase/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-// import ToDoList from './ToDoList.jsx';
+import { collection, query, where, getDocs, doc, getDoc, orderBy, limit } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
+  const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
   const [savingsGoals, setSavingsGoals] = useState([]);
-  // Sample data for the charts and displays
-  const monthlyData = {
-    spent: 1245.30,
-    budget: 2000.00,
-    remaining: 754.70,
-    percentSpent: 62.3
-  };
- 
-  const expenses = [
-    { category: "Housing", value: 450.00, color: "#44FF07" }, // purple
-    { category: "Food", value: 398.50, color: "#FED60A" }, // Orange
-    { category: "Transport", value: 256.40, color:
-     "#FB0007" }, // Blue
-    { category: "Shopping", value: 87.90, color: "#3700FF" }, // Green
-    { category: "Other", value: 52.50, color: "#FB13F3" } // Gray
-  ];
- 
-  const recentExpenses = [
-    { name: 'Grocery Shopping', amount: 78.35, category: 'Food', color: 'bg-orange-500' },
-    { name: 'Gas Station', amount: 45.00, category: 'Transport', color: 'bg-blue-500' },
-    { name: 'Coffee Shop', amount: 4.75, category: 'Food', color: 'bg-orange-500' },
-    { name: 'Internet Bill', amount: 59.99, category: 'Housing', color: 'bg-purple-500' },
-    { name: 'Amazon Purchase', amount: 32.45, category: 'Shopping', color: 'bg-green-500' }
-  ];
- 
-  // const savingsGoals = [
-  //   { name: 'Vacation', target: 2000, saved: 1400, percentComplete: 70 },
-  //   { name: 'New Laptop', target: 1200, saved: 300, percentComplete: 25 },
-  //   { name: 'Emergency Fund', target: 5000, saved: 2750, percentComplete: 55 }
-  // ];
+  const [userProfile, setUserProfile] = useState(null);
+  const [monthlyData, setMonthlyData] = useState({
+    spent: 0,
+    budget: 0,
+    remaining: 0,
+    percentSpent: 0
+  });
+  const [expenses, setExpenses] = useState([]);
+  const [recentExpenses, setRecentExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Function to handle the "Add New Goal" button click
+  const colors = [
+    "#44FF07", "#FED60A", "#FB0007", "#3700FF", "#FB13F3", 
+    "#00C6FF", "#FF8A00", "#A200FF", "#FF006A", "#00FF88"
+  ];
+
+  // Check if user has completed setup
+  useEffect(() => {
+    const checkUserSetup = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const profileRef = doc(db, 'userProfiles', user.uid);
+        const profileSnap = await getDoc(profileRef);
+        
+        if (!profileSnap.exists()) {
+          // User hasn't completed setup - redirect to setup page
+          navigate('/setup');
+        } else {
+          setUserProfile(profileSnap.data());
+        }
+      } catch (error) {
+        console.error('Error checking user profile:', error);
+      }
+    };
+
+    checkUserSetup();
+  }, [navigate]);
+
+  // Fetch current month's budget data
+  useEffect(() => {
+    const fetchBudgetData = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const monthYear = `${month}-${year}`;
+        
+        const budgetRef = doc(db, 'budgets', `${user.uid}_${monthYear}`);
+        const budgetSnap = await getDoc(budgetRef);
+        
+        if (budgetSnap.exists()) {
+          const data = budgetSnap.data();
+          setMonthlyData({
+            spent: data.spent || 0,
+            budget: data.budget || 0,
+            remaining: data.remaining || data.budget || 0,
+            percentSpent: data.budget ? Math.round((data.spent / data.budget) * 100) : 0
+          });
+        } else if (userProfile) {
+          // Create default using user's monthly budget
+          setMonthlyData({
+            spent: 0,
+            budget: userProfile.monthlyBudget || 0,
+            remaining: userProfile.monthlyBudget || 0,
+            percentSpent: 0
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching budget data:', error);
+      }
+    };
+
+    if (userProfile) {
+      fetchBudgetData();
+    }
+  }, [userProfile]);
+
+  // Fetch expense category data for current month
+  const fetchCategoryData = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      
+      const expensesQuery = query(
+        collection(db, 'expenses'),
+        where('userId', '==', user.uid),
+        where('month', '==', currentMonth),
+        where('year', '==', currentYear)
+      );
+      
+      const querySnapshot = await getDocs(expensesQuery);
+      
+      // Group expenses by category
+      const categoryMap = {};
+      querySnapshot.forEach(doc => {
+        const expenseData = doc.data();
+        const category = expenseData.category;
+        
+        if (!categoryMap[category]) {
+          categoryMap[category] = 0;
+        }
+        categoryMap[category] += expenseData.amount;
+      });
+      
+      // Convert to array format for pie chart
+      const categoryData = Object.keys(categoryMap).map((category, index) => ({
+        category: category,
+        value: categoryMap[category],
+        color: colors[index % colors.length]
+      }));
+      
+      setExpenses(categoryData);
+    } catch (error) {
+      console.error('Error fetching category data:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (userProfile) {
+      fetchCategoryData();
+    }
+  }, [userProfile]);
+
+  // Fetch recent expenses
+  const fetchRecentExpenses = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      const recentQuery = query(
+        collection(db, 'expenses'),
+        where('userId', '==', user.uid),
+        orderBy('date', 'desc'),
+        limit(5)
+      );
+      
+      const querySnapshot = await getDocs(recentQuery);
+      const recentData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Find the color assigned to this category
+        const categoryObj = expenses.find(e => e.category === data.category);
+        const color = categoryObj ? categoryObj.color : colors[0];
+        
+        return {
+          id: doc.id,
+          name: data.name,
+          amount: data.amount,
+          category: data.category,
+          date: data.date.toDate(),
+          color: color
+        };
+      });
+      
+      setRecentExpenses(recentData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching recent expenses:', error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (expenses.length > 0) {
+      fetchRecentExpenses();
+    }
+  }, [expenses]);
+
+  // Fetch savings goals
   const fetchSavingsGoals = async () => {
     try {
       const user = auth.currentUser;
@@ -61,37 +208,91 @@ const Dashboard = () => {
       }));
 
       setSavingsGoals(fetchedGoals);
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching savings goals:', error);
+      setLoading(false);
     }
   };
-// Fetch goals when component mounts and user changes
-useEffect(() => {
-  fetchSavingsGoals();
-}, []);
 
-// Function to handle the "Add New Goal" button click
-const handleAddNewGoal = () => {
-  setIsAddGoalModalOpen(true);
-};
- 
+  useEffect(() => {
+    fetchSavingsGoals();
+  }, []);
+
+  // Handle Add Expense button click (from Sidebar)
+  const handleAddExpense = () => {
+    setIsAddExpenseModalOpen(true);
+  };
+
+  // Function to handle the "Add New Goal" button click
+  const handleAddNewGoal = () => {
+    setIsAddGoalModalOpen(true);
+  };
+
+  // Function to refresh data after adding expense
+  const handleExpenseAdded = () => {
+    // Refetch all data
+    if (userProfile) {
+      // Fetch budget data
+      const fetchBudgetData = async () => {
+        try {
+          const user = auth.currentUser;
+          if (!user) return;
+  
+          const now = new Date();
+          const month = now.getMonth() + 1;
+          const year = now.getFullYear();
+          const monthYear = `${month}-${year}`;
+          
+          const budgetRef = doc(db, 'budgets', `${user.uid}_${monthYear}`);
+          const budgetSnap = await getDoc(budgetRef);
+          
+          if (budgetSnap.exists()) {
+            const data = budgetSnap.data();
+            setMonthlyData({
+              spent: data.spent || 0,
+              budget: data.budget || 0,
+              remaining: data.remaining || data.budget || 0,
+              percentSpent: data.budget ? Math.round((data.spent / data.budget) * 100) : 0
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching budget data:', error);
+        }
+      };
+  
+      fetchBudgetData();
+      fetchCategoryData();
+    }
+  };
+  
+  // Get current month name and year for display
+  const getCurrentMonthYear = () => {
+    const date = new Date();
+    return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100 ">
-      {/* Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar with Add Expense button handler */}
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        onAddExpenseClick={handleAddExpense}
+      />
      
       {/* Main Content */}
       <div className="flex-1 lg:ml-64 p-10 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="text-2xl font-bold text-gray-800">
-            February 2025
+            {getCurrentMonthYear()}
           </div>
           <div className="flex gap-4 items-center">
             <div className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg">
-              Last updated: Today, 9:45 AM
+              Last updated: {new Date().toLocaleString()}
             </div>
             <div className="bg-indigo-600 text-white rounded-full h-10 w-10 flex items-center justify-center font-medium">
-              ISH
+              {userProfile?.initials || "U"}
             </div>
           </div>
         </div>
@@ -142,19 +343,27 @@ const handleAddNewGoal = () => {
                 <div className="w-1/2">
                   <div className="flex flex-col items-center">
                     <h2 className="text-lg font-semibold">Expense Breakdown</h2>
+                    {expenses.length > 0 ? (
                       <PieChart data={expenses} />
+                    ) : (
+                      <div className="text-gray-500 mt-4">No expenses yet</div>
+                    )}
                   </div>
                 </div>
                 <div className="w-1/2 flex flex-col justify-center">
-                  {expenses.map((item, index) => (
-                    <div key={index} className="flex items-center mb-2">
-                      <div className={`w-3 h-3 rounded-full mr-2`} style={{ backgroundColor: item.color }}></div>
-                      <div className="flex justify-between w-full">
-                        <span>{item.category}</span>
-                        <span className="font-medium">${item.value}</span>
+                  {expenses.length > 0 ? (
+                    expenses.map((item, index) => (
+                      <div key={index} className="flex items-center mb-2">
+                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
+                        <div className="flex justify-between w-full">
+                          <span>{item.category}</span>
+                          <span className="font-medium">${item.value.toFixed(2)}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-gray-500">Add expenses to see your spending breakdown</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -166,24 +375,41 @@ const handleAddNewGoal = () => {
                 Recent Expenses
               </div>
               <div className="space-y-4">
-                {recentExpenses.map((expense, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded transition-colors">
-                    <div className="flex items-center">
-                      <div className={`w-3 h-3 ${expense.color} rounded-full mr-3`}></div>
-                      <div>
-                        <div className="font-medium">{expense.name}</div>
-                        <div className="text-xs text-gray-500">{expense.category}</div>
+                {recentExpenses.length > 0 ? (
+                  recentExpenses.map((expense, index) => (
+                    <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded transition-colors">
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: expense.color }}></div>
+                        <div>
+                          <div className="font-medium">{expense.name}</div>
+                          <div className="text-xs text-gray-500">{expense.category}</div>
+                        </div>
+                      </div>
+                      <div className="text-gray-700 font-medium">
+                        ${expense.amount.toFixed(2)}
                       </div>
                     </div>
-                    <div className="text-gray-700 font-medium">
-                      ${expense.amount.toFixed(2)}
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    No recent expenses. Add your first expense!
                   </div>
-                ))}
+                )}
               </div>
-              <div className="text-indigo-600 mt-4 cursor-pointer font-medium hover:underline flex items-center justify-center text-center pt-2" onClick={() => setActiveTab('expenses')}>
-                View All Expenses →
-              </div>
+              {recentExpenses.length > 0 && (
+                <div 
+                  className="text-indigo-600 mt-4 cursor-pointer font-medium hover:underline flex items-center justify-center text-center pt-2" 
+                  onClick={() => setActiveTab('expenses')}
+                >
+                  View All Expenses →
+                </div>
+              )}
+              <button 
+                className="bg-green-500 hover:bg-green-600 text-white w-full py-2 rounded-lg mt-4 transition-colors flex items-center justify-center" 
+                onClick={handleAddExpense}
+              >
+                <span className="mr-2">+</span> Add New Expense
+              </button>
             </div>
            
             {/* Savings Goals */}
@@ -193,32 +419,38 @@ const handleAddNewGoal = () => {
                 Savings Goals
               </div>
               <div className="space-y-6">
-                {savingsGoals.map((goal, index) => (
-                  <div key={goal.id} className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="font-medium">{goal.name}</div>
-                      <div className="text-gray-700">
-                        ${goal.saved.toFixed(0)}/${goal.target.toFixed(0)}
-                      </div>
-                    </div>
-                    <div className="pt-1">
-                      <div className="overflow-hidden h-2 mb-1 text-xs flex rounded-full bg-gray-200">
-                        <div
-                          className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center rounded-full ${
-                            goal.percentComplete > 66 ? 'bg-green-500' :
-                            goal.percentComplete > 33 ? 'bg-yellow-500' : 'bg-red-400'
-                          } transition-all duration-500`}
-                          style={{ width: `${goal.percentComplete}%` }}>
+                {savingsGoals.length > 0 ? (
+                  savingsGoals.map((goal) => (
+                    <div key={goal.id} className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="font-medium">{goal.name}</div>
+                        <div className="text-gray-700">
+                          ${goal.saved.toFixed(0)}/${goal.target.toFixed(0)}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs text-gray-500">
-                          {goal.percentComplete}% complete
-                        </span>
+                      <div className="pt-1">
+                        <div className="overflow-hidden h-2 mb-1 text-xs flex rounded-full bg-gray-200">
+                          <div
+                            className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center rounded-full ${
+                              goal.percentComplete > 66 ? 'bg-green-500' :
+                              goal.percentComplete > 33 ? 'bg-yellow-500' : 'bg-red-400'
+                            } transition-all duration-500`}
+                            style={{ width: `${goal.percentComplete}%` }}>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-gray-500">
+                            {goal.percentComplete}% complete
+                          </span>
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    No savings goals yet. Create your first goal!
                   </div>
-                ))}
+                )}
                 <button 
                   className="bg-indigo-100 text-indigo-700 w-full py-2 rounded-lg hover:bg-indigo-200 transition-colors mt-2" 
                   onClick={handleAddNewGoal}
@@ -229,13 +461,21 @@ const handleAddNewGoal = () => {
             </div>
           </div>
         )}
-        { <AddGoalModal 
+       
+        {/* Modals */}
+        <AddGoalModal 
           isOpen={isAddGoalModalOpen}
           onClose={() => setIsAddGoalModalOpen(false)}
           onGoalAdded={fetchSavingsGoals}
-        /> }
+        />
+        
+        <AddExpenseModal 
+          isOpen={isAddExpenseModalOpen}
+          onClose={() => setIsAddExpenseModalOpen(false)}
+          onExpenseAdded={handleExpenseAdded}
+        />
        
-        {activeTab !== 'dashboard' && activeTab !== 'SIPCalculator'  &&(
+        {activeTab !== 'dashboard' && activeTab !== 'SIPCalculator' && (
           <div className="bg-white p-10 rounded-lg shadow-md text-center">
             <div className="text-4xl mb-4">🚧</div>
             <div className="text-2xl font-bold mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} View</div>
@@ -244,29 +484,11 @@ const handleAddNewGoal = () => {
         )}
 
         {activeTab === 'SIPCalculator' && (
-            <SIPCaluclator></SIPCaluclator>
-          )
-        }
+          <SIPCaluclator />
+        )}
       </div>
     </div>
   );
-  // return (
-  //   <div className="flex h-screen bg-gray-100">
-  //     {/* Sidebar */}
-  //     <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-
-  //     {/* Main Content */}
-  //     <div className="flex-1 lg:ml-64 p-10 overflow-y-auto">
-  //       {/* ... existing dashboard components */}
-
-  //       {/* To-Do List Section */}
-  //       <div className="mt-6">
-  //         <ToDoList />
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
 };
-
 
 export default Dashboard;
