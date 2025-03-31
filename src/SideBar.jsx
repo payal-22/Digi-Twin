@@ -29,11 +29,12 @@ const Sidebar = ({ activeTab, setActiveTab, onAddExpenseClick }) => {
           {[
             { name: "Dashboard", id: "dashboard", icon: "📊", path: "/dashboard" },
             { name: "Expenses", id: "expenses", icon: "💰", path: "/expenses" },
+            { name: "Tasks", id: "tasks", icon: "📋", path: "/tasks" },
             { name: "Reports", id: "reports", icon: "📝", path: "/reports" },
             { name: "Goals", id: "goals", icon: "🎯", path: "/goals" },
-            { name: "Budget", id: "budget", icon: "💵", path: "/budget" },
-            { name: "Settings", id: "settings", icon: "⚙️", path: "/settings" },
-            { name: "SIP Calculator", id: "SIPCalculator", icon: "💲", path: "/SIPCalculator" }
+            { name: "Budget", id: "budget", icon: "💵", path: "/BudgetComparison" },
+            { name: "SIP Calculator", id: "SIPCalculator", icon: "💲", path: "/SIPCalculator" },
+            { name: "Settings", id: "settings", icon: "⚙️", path: "/Settings" }
           ].map((item) => (
             <button
               key={item.id}

@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import PieChart from './PieChart.jsx';
 import Sidebar from './SideBar.jsx';
 import SIPCaluclator from './SIPCalculator.jsx';
-import AddGoalModal from './AddGoalModal';
+import ToDoList from './ToDoList.jsx';
+import Settings from './Settings.jsx';
+import Expenses from './Expenses.jsx'; 
+import BudgetComparison from './BudgetComparison.jsx';
+import Goals from './Goals.jsx';
+import AddGoalModal from './AddGoalModal.jsx';
+import EditGoalModal from './EditGoalModal.jsx';
 import AddExpenseModal from './ExpenseModal.jsx';
 import { db, auth } from './firebase/firebase';
 import { collection, query, where, getDocs, doc, getDoc, orderBy, limit } from 'firebase/firestore';
@@ -146,17 +152,18 @@ const Dashboard = () => {
     }
   }, [userProfile]);
 
-  // Fetch recent expenses
+  // Fetch recent expenses - limit to 4 for dashboard display
   const fetchRecentExpenses = async () => {
     try {
       const user = auth.currentUser;
       if (!user) return;
       
+      // Modified to explicitly order by date descending to ensure most recent are at top
       const recentQuery = query(
         collection(db, 'expenses'),
         where('userId', '==', user.uid),
         orderBy('date', 'desc'),
-        limit(5)
+        limit(4)
       );
       
       const querySnapshot = await getDocs(recentQuery);
@@ -190,7 +197,7 @@ const Dashboard = () => {
     }
   }, [expenses]);
 
-  // Fetch savings goals
+  // Fetch savings goals - limited to 4 for dashboard display
   const fetchSavingsGoals = async () => {
     try {
       const user = auth.currentUser;
@@ -229,6 +236,11 @@ const Dashboard = () => {
     setIsAddGoalModalOpen(true);
   };
 
+  // Navigate to Goals page
+  const navigateToGoals = () => {
+    setActiveTab('goals');
+  };
+
   // Function to refresh data after adding expense
   const handleExpenseAdded = () => {
     // Refetch all data
@@ -263,6 +275,8 @@ const Dashboard = () => {
   
       fetchBudgetData();
       fetchCategoryData();
+      // Immediately fetch recent expenses to show new additions
+      fetchRecentExpenses();
     }
   };
   
@@ -375,7 +389,11 @@ const Dashboard = () => {
                 Recent Expenses
               </div>
               <div className="space-y-4">
-                {recentExpenses.length > 0 ? (
+                {loading ? (
+                  <div className="text-center text-gray-500 py-4">
+                    Loading recent expenses...
+                  </div>
+                ) : recentExpenses.length > 0 ? (
                   recentExpenses.map((expense, index) => (
                     <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded transition-colors">
                       <div className="flex items-center">
@@ -412,7 +430,7 @@ const Dashboard = () => {
               </button>
             </div>
            
-            {/* Savings Goals */}
+           {/* Savings Goals - Limited to 4 */}
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
               <div className="text-lg font-semibold mb-4 flex items-center">
                 <span className="mr-2">🎯</span>
@@ -420,7 +438,7 @@ const Dashboard = () => {
               </div>
               <div className="space-y-6">
                 {savingsGoals.length > 0 ? (
-                  savingsGoals.map((goal) => (
+                  savingsGoals.slice(0, 4).map((goal) => (
                     <div key={goal.id} className="mb-4">
                       <div className="flex justify-between items-center mb-2">
                         <div className="font-medium">{goal.name}</div>
@@ -432,16 +450,22 @@ const Dashboard = () => {
                         <div className="overflow-hidden h-2 mb-1 text-xs flex rounded-full bg-gray-200">
                           <div
                             className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center rounded-full ${
+                              goal.percentComplete >= 100 ? 'bg-green-500' :
                               goal.percentComplete > 66 ? 'bg-green-500' :
                               goal.percentComplete > 33 ? 'bg-yellow-500' : 'bg-red-400'
                             } transition-all duration-500`}
-                            style={{ width: `${goal.percentComplete}%` }}>
+                            style={{ width: `${Math.min(goal.percentComplete, 100)}%` }}>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-500">
                             {goal.percentComplete}% complete
                           </span>
+                          {goal.percentComplete >= 100 && (
+                            <span className="text-xs text-green-600 font-medium flex items-center">
+                              <span className="animate-bounce mr-1">🎉</span> Complete!
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -451,17 +475,69 @@ const Dashboard = () => {
                     No savings goals yet. Create your first goal!
                   </div>
                 )}
-                <button 
-                  className="bg-indigo-100 text-indigo-700 w-full py-2 rounded-lg hover:bg-indigo-200 transition-colors mt-2" 
-                  onClick={handleAddNewGoal}
-                >
-                  + Add New Goal
-                </button>
+                {savingsGoals.length > 4 ? (
+                  <div className="flex gap-2">
+                    <button 
+                      className="bg-indigo-100 text-indigo-700 w-full py-2 rounded-lg hover:bg-indigo-200 transition-colors" 
+                      onClick={navigateToGoals}
+                    >
+                      View All Goals ({savingsGoals.length})
+                    </button>
+                    <button 
+                      className="bg-indigo-600 text-white w-1/3 py-2 rounded-lg hover:bg-indigo-700 transition-colors" 
+                      onClick={handleAddNewGoal}
+                    >
+                      + Add
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    className="bg-indigo-100 text-indigo-700 w-full py-2 rounded-lg hover:bg-indigo-200 transition-colors" 
+                    onClick={handleAddNewGoal}
+                  >
+                    + Add New Goal
+                  </button>
+                )}
               </div>
             </div>
           </div>
         )}
+              
        
+        {/* Tasks Tab View */}
+        {activeTab === 'tasks' && (
+          <ToDoList />
+        )}
+        
+        {/* Settings Tab View */}
+        {activeTab === 'settings' && (
+          <Settings />
+        )}
+        
+        {/* SIP Calculator Tab View */}
+        {activeTab === 'SIPCalculator' && (
+          <SIPCaluclator />
+        )}
+        
+        {/* Expenses Tab View */}
+        {activeTab === 'expenses' && (
+          <Expenses
+            onAddExpenseClick={handleAddExpense}
+            expenseColors={colors}
+            onExpenseAdded={handleExpenseAdded}
+          />
+        )}
+        
+        {/* Budget Tab View */}
+        {activeTab === 'budget' && (
+          <BudgetComparison />
+        )}
+
+        {/* Goals Tab View */}
+        {activeTab === 'goals' && (
+          <Goals />
+        )}
+        
         {/* Modals */}
         <AddGoalModal 
           isOpen={isAddGoalModalOpen}
@@ -475,16 +551,18 @@ const Dashboard = () => {
           onExpenseAdded={handleExpenseAdded}
         />
        
-        {activeTab !== 'dashboard' && activeTab !== 'SIPCalculator' && (
+        {activeTab !== 'dashboard' && 
+         activeTab !== 'SIPCalculator' && 
+         activeTab !== 'tasks' && 
+         activeTab !== 'settings' &&
+         activeTab !== 'expenses' &&
+         activeTab !== 'budget' &&
+         activeTab !== 'goals' && (
           <div className="bg-white p-10 rounded-lg shadow-md text-center">
             <div className="text-4xl mb-4">🚧</div>
             <div className="text-2xl font-bold mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} View</div>
             <div className="text-gray-600">This section is under construction. Please check back later!</div>
           </div>
-        )}
-
-        {activeTab === 'SIPCalculator' && (
-          <SIPCaluclator />
         )}
       </div>
     </div>
