@@ -21,7 +21,7 @@ const Sidebar = ({ activeTab, setActiveTab, onAddExpenseClick }) => {
       >
         {/* Sidebar Header */}
         <div className="text-3xl font-bold text-center text-indigo-400 mb-8">
-          ExpenseTracker
+          Digi-Twin
         </div>
 
         {/* Navigation Links */}

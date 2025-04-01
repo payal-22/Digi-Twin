@@ -55,7 +55,7 @@ const EditGoalModal = ({ isOpen, onClose, onGoalUpdated, goal }) => {
       // Show success message with appropriate text
       if (newSaved > goal.saved) {
         const difference = (newSaved - goal.saved).toFixed(2);
-        setUpdateMessage(`You've added $${difference} to your savings! 💰`);
+        setUpdateMessage(`You've added ₹${difference} to your savings! 💰`);
       } else if (isNewlyCompleted) {
         setUpdateMessage("Congratulations! You've reached your goal! 🎉");
       } else {
@@ -120,7 +120,7 @@ const EditGoalModal = ({ isOpen, onClose, onGoalUpdated, goal }) => {
             />
             {goal && parseFloat(savedAmount) > goal.saved && (
               <div className="text-green-600 text-sm mt-1">
-                +${(parseFloat(savedAmount) - goal.saved).toFixed(2)} from previous amount
+                +₹{(parseFloat(savedAmount) - goal.saved).toFixed(2)} from previous amount
               </div>
             )}
           </div>

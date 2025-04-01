@@ -370,15 +370,15 @@ const Dashboard = () => {
                 Month Overview
               </div>
               <div className="text-green-600 text-2xl font-bold mb-2">
-                ${monthlyData.remaining.toFixed(2)} left to spend
+              ₹{monthlyData.remaining.toFixed(2)} left to spend
               </div>
               <div className="text-gray-600 mb-2 flex justify-between">
                 <span>Spent:</span>
-                <span className="font-medium">${monthlyData.spent.toFixed(2)}</span>
+                <span className="font-medium">₹{monthlyData.spent.toFixed(2)}</span>
               </div>
               <div className="text-gray-600 mb-4 flex justify-between">
                 <span>Budget:</span>
-                <span className="font-medium">${monthlyData.budget.toFixed(2)}</span>
+                <span className="font-medium">₹{monthlyData.budget.toFixed(2)}</span>
               </div>
               <div className="pt-1">
                 <div className="flex mb-2 items-center justify-between">
@@ -421,7 +421,7 @@ const Dashboard = () => {
                         <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
                         <div className="flex justify-between w-full">
                           <span>{item.category}</span>
-                          <span className="font-medium">${item.value.toFixed(2)}</span>
+                          <span className="font-medium">₹{item.value.toFixed(2)}</span>
                         </div>
                       </div>
                     ))
@@ -454,7 +454,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <div className="text-gray-700 font-medium">
-                        ${expense.amount.toFixed(2)}
+                      ₹{expense.amount.toFixed(2)}
                       </div>
                     </div>
                   ))
@@ -493,7 +493,7 @@ const Dashboard = () => {
                       <div className="flex justify-between items-center mb-2">
                         <div className="font-medium">{goal.name}</div>
                         <div className="text-gray-700">
-                          ${goal.saved.toFixed(0)}/${goal.target.toFixed(0)}
+                        ₹{goal.saved.toFixed(0)}/₹{goal.target.toFixed(0)}
                         </div>
                       </div>
                       <div className="pt-1">

@@ -249,7 +249,7 @@ const Expenses = ({ onAddExpenseClick, expenseColors, onExpenseAdded }) => {
             </p>
           </div>
           <div className="text-2xl font-bold text-indigo-700">
-            ${Math.abs(totalExpenses).toFixed(2)}
+          ₹{Math.abs(totalExpenses).toFixed(2)}
           </div>
         </div>
       </div>
@@ -338,7 +338,7 @@ const Expenses = ({ onAddExpenseClick, expenseColors, onExpenseAdded }) => {
                   </td>
                   <td className="py-3 px-4">{expense.category}</td>
                   <td className="py-3 px-4">{expense.paymentMethod}</td>
-                  <td className="py-3 px-4 font-medium">${Math.abs(expense.amount).toFixed(2)}</td>
+                  <td className="py-3 px-4 font-medium">₹{Math.abs(expense.amount).toFixed(2)}</td>
                   <td className="py-3 px-4">
                     <button
                       onClick={() => handleDeleteExpense(expense.id)}

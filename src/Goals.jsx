@@ -195,8 +195,8 @@ const Goals = () => {
                     </div>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Saved: ${goal.saved.toFixed(2)}</span>
-                    <span>Target: ${goal.target.toFixed(2)}</span>
+                    <span>Saved: ₹{goal.saved.toFixed(2)}</span>
+                    <span>Target: ₹{goal.target.toFixed(2)}</span>
                   </div>
                   
                   {goal.percentComplete >= 100 && (
