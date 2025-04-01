@@ -303,7 +303,7 @@ const Settings = () => {
                       Monthly savings target:
                     </label>
                     <div className="flex items-center">
-                      <span className="text-gray-500 mr-1">$</span>
+                      <span className="text-gray-500 mr-1">₹</span>
                       <input 
                         type="number" 
                         id="savings-goal"

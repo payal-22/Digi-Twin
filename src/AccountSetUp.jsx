@@ -71,9 +71,9 @@ const AccountSetup = () => {
 
       // Create initial budget document for current month
       const now = new Date();
-      const monthYear = `${now.getMonth() + 1}-${now.getFullYear()}`;
+      const monthYear = `₹{now.getMonth() + 1}-₹{now.getFullYear()}`;
       
-      await setDoc(doc(db, 'budgets', `${user.uid}_${monthYear}`), {
+      await setDoc(doc(db, 'budgets', `₹{user.uid}_₹{monthYear}`), {
         userId: user.uid,
         month: now.getMonth() + 1,
         year: now.getFullYear(),
@@ -259,7 +259,7 @@ const AccountSetup = () => {
             Step {step} of 3 - Let's get your finances organized
           </p>
           <div className="w-full bg-gray-200 rounded-full h-2.5 mt-4">
-            <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${(step / 3) * 100}%` }}></div>
+            <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `₹{(step / 3) * 100}%` }}></div>
           </div>
         </div>
         

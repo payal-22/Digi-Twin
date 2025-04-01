@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase/firebase';
-import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc, getDoc, updateDoc, collectionGroup } from 'firebase/firestore';
 import ManualTransactionModal from './ManualTransaction';
 
 const Expenses = ({ onAddExpenseClick, expenseColors, onExpenseAdded }) => {
@@ -60,7 +60,9 @@ const Expenses = ({ onAddExpenseClick, expenseColors, onExpenseAdded }) => {
           category: data.category,
           date: data.date.toDate(),
           notes: data.notes || '',
-          paymentMethod: data.paymentMethod || 'Other'
+          paymentMethod: data.paymentMethod || 'Other',
+          month: data.month,
+          year: data.year
         };
       });
       
@@ -112,23 +114,83 @@ const Expenses = ({ onAddExpenseClick, expenseColors, onExpenseAdded }) => {
     fetchExpenses();
   }, [filter, sortBy, categoryFilter]);
 
+  const recalculateBudget = async (month, year, userId) => {
+    try {
+      // Create the month-year identifier
+      const monthYear = `${month}-${year}`;
+      const budgetDocId = `${userId}_${monthYear}`;
+      const budgetRef = doc(db, 'budgets', budgetDocId);
+      
+      // Get all expenses for this month and year to calculate the correct total
+      const expensesQuery = query(
+        collection(db, 'expenses'),
+        where('userId', '==', userId),
+        where('month', '==', month),
+        where('year', '==', year)
+      );
+      
+      const querySnapshot = await getDocs(expensesQuery);
+      
+      // Calculate the total spent amount from all expenses
+      let totalSpent = 0;
+      querySnapshot.forEach((doc) => {
+        totalSpent += doc.data().amount;
+      });
+      
+      // Get the budget document
+      const budgetSnap = await getDoc(budgetRef);
+      
+      if (budgetSnap.exists()) {
+        const budgetData = budgetSnap.data();
+        const monthlyBudget = budgetData.budget || 0;
+        
+        // Update the budget document with the recalculated values
+        await updateDoc(budgetRef, {
+          spent: totalSpent,
+          remaining: monthlyBudget - totalSpent
+        });
+        
+        console.log(`Budget recalculated for ${monthYear}: spent=${totalSpent}, remaining=${monthlyBudget - totalSpent}`);
+      } else {
+        console.log(`No budget document found for ${monthYear}`);
+      }
+    } catch (error) {
+      console.error('Error recalculating budget:', error);
+    }
+  };
+
   const handleDeleteExpense = async (expenseId) => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
       try {
         const user = auth.currentUser;
         if (!user) return;
         
-        await deleteDoc(doc(db, 'expenses', expenseId));
+        // Get the expense data before deleting it
+        const expenseRef = doc(db, 'expenses', expenseId);
+        const expenseSnap = await getDoc(expenseRef);
         
-        // Refresh expenses list
-        fetchExpenses();
-        
-        // Notify parent component that expense was deleted
-        if (onExpenseAdded) {
-          onExpenseAdded();
+        if (expenseSnap.exists()) {
+          const expenseData = expenseSnap.data();
+          const month = expenseData.month;
+          const year = expenseData.year;
+          
+          // Delete the expense document
+          await deleteDoc(expenseRef);
+          
+          // Recalculate the budget totals from all remaining expenses
+          await recalculateBudget(month, year, user.uid);
+          
+          // Refresh expenses list
+          fetchExpenses();
+          
+          // Notify parent component that expense was deleted
+          if (onExpenseAdded) {
+            onExpenseAdded();
+          }
         }
       } catch (error) {
         console.error('Error deleting expense:', error);
+        alert('Error deleting expense. Please try again.');
       }
     }
   };

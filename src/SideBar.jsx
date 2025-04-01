@@ -30,7 +30,7 @@ const Sidebar = ({ activeTab, setActiveTab, onAddExpenseClick }) => {
             { name: "Dashboard", id: "dashboard", icon: "📊", path: "/dashboard" },
             { name: "Expenses", id: "expenses", icon: "💰", path: "/expenses" },
             { name: "Tasks", id: "tasks", icon: "📋", path: "/tasks" },
-            { name: "Reports", id: "reports", icon: "📝", path: "/reports" },
+            // { name: "Reports", id: "reports", icon: "📝", path: "/reports" },
             { name: "Goals", id: "goals", icon: "🎯", path: "/goals" },
             { name: "Budget", id: "budget", icon: "💵", path: "/BudgetComparison" },
             { name: "SIP Calculator", id: "SIPCalculator", icon: "💲", path: "/SIPCalculator" },

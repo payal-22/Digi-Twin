@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase/firebase';
-import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
   const [userCategories, setUserCategories] = useState(['Housing', 'Food', 'Transport', 'Shopping', 'Other']);
@@ -77,7 +77,8 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
       });
 
       // Update the monthly budget
-      const budgetRef = doc(db, 'budgets', `${user.uid}_${monthYear}`);
+      const budgetDocId = `${user.uid}_${monthYear}`;
+      const budgetRef = doc(db, 'budgets', budgetDocId);
       const budgetSnap = await getDoc(budgetRef);
       
       if (budgetSnap.exists()) {
@@ -100,8 +101,8 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
           monthlyBudget = profileSnap.data().monthlyBudget;
         }
         
-        // Create new budget document
-        await addDoc(collection(db, 'budgets'), {
+        // Create new budget document with specific ID
+        await setDoc(budgetRef, {
           userId: user.uid,
           month,
           year,

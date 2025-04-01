@@ -32,7 +32,7 @@ const GoalCelebration = ({ isVisible, onComplete, goalName }) => {
           <div className="text-xl font-bold text-green-600">Congratulations!</div>
           <div className="mt-2 text-gray-700">
             {goalName ? 
-              `You've reached your "${goalName}" savings goal!` :
+              `You've reached your "₹{goalName}" savings goal!` :
               "You've reached 100% of your savings goal!"}
           </div>
         </div>

@@ -213,7 +213,7 @@ const ToDoList = () => {
       if (userProfile.hasSavingsGoalReminder && userProfile.savingsGoal > 0) {
         defaultTasks.push({
           userId: user.uid,
-          task: `Transfer $${userProfile.savingsGoal} to savings account`,
+          task: `Transfer ₹${userProfile.savingsGoal} to savings account`,
           completed: false,
           month: currentMonth,
           year: currentYear,

@@ -13,12 +13,14 @@ import AddExpenseModal from './ExpenseModal.jsx';
 import { db, auth } from './firebase/firebase';
 import { collection, query, where, getDocs, doc, getDoc, orderBy, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [savingsGoals, setSavingsGoals] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [monthlyData, setMonthlyData] = useState({
@@ -286,6 +288,27 @@ const Dashboard = () => {
     return date.toLocaleString('default', { month: 'long', year: 'numeric' });
   };
 
+  // Function to handle user icon click
+  const handleUserIconClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  // Function to handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Redirect to login page after logout
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  // Function to close logout confirmation
+  const closeLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar with Add Expense button handler */}
@@ -305,12 +328,39 @@ const Dashboard = () => {
             <div className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg">
               Last updated: {new Date().toLocaleString()}
             </div>
-            <div className="bg-indigo-600 text-white rounded-full h-10 w-10 flex items-center justify-center font-medium">
+            <div 
+              className="bg-indigo-600 text-white rounded-full h-10 w-10 flex items-center justify-center font-medium cursor-pointer hover:bg-indigo-700 transition-colors"
+              onClick={handleUserIconClick}
+            >
               {userProfile?.initials || "U"}
             </div>
           </div>
         </div>
        
+        {/* Logout Confirmation Modal */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 shadow-xl max-w-sm w-full">
+              <h3 className="text-lg font-bold mb-4">Logout Confirmation</h3>
+              <p className="mb-6">Are you sure you want to log out?</p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  onClick={closeLogoutConfirm}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'dashboard' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Month Overview */}

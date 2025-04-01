@@ -192,12 +192,12 @@ const BudgetComparison = () => {
                       className="w-full rounded-t transition-all"
                       style={{ 
                         backgroundColor: data.color, 
-                        height: `${(data.totalSpent / Math.max(...monthlyData.map(m => m.totalSpent))) * 100}%`,
+                        height: `₹{(data.totalSpent / Math.max(...monthlyData.map(m => m.totalSpent))) * 100}%`,
                         minHeight: '10px'
                       }}
                     ></div>
                     <div className="text-xs font-medium mt-1">{data.month}</div>
-                    <div className="text-xs mt-1">${data.totalSpent.toFixed(2)}</div>
+                    <div className="text-xs mt-1">₹{data.totalSpent.toFixed(2)}</div>
                   </div>
                 )
               ))}
@@ -224,7 +224,7 @@ const BudgetComparison = () => {
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: monthData.color }}></div>
                             <span className="text-xs">{monthData.month}</span>
                           </div>
-                          <div className="text-xs font-medium">${amount.toFixed(2)}</div>
+                          <div className="text-xs font-medium">₹{amount.toFixed(2)}</div>
                         </div>
                       );
                     })}
