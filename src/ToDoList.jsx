@@ -48,20 +48,14 @@ const ToDoList = () => {
     setNewTaskDueDate(formatDateForInput(tomorrow));
   }, []);
 
-  // Generate default tasks based on user profile when profile is updated
+  // Automatically regenerate tasks when user profile is updated
   useEffect(() => {
     if (userProfile && profileUpdated) {
       // Reset the flag
       setProfileUpdated(false);
       
-      // Check if we should reset tasks based on the updated profile
-      const shouldResetTasks = window.confirm(
-        'Your profile settings have been updated. Would you like to regenerate your tasks based on your new preferences?'
-      );
-      
-      if (shouldResetTasks) {
-        resetMonthlyTasks();
-      }
+      // Automatically regenerate tasks based on updated profile without asking for confirmation
+      resetMonthlyTasks();
     }
   }, [userProfile, profileUpdated]);
 
@@ -430,18 +424,6 @@ const ToDoList = () => {
     }
   };
 
-  // Add button to manually regenerate tasks
-  const renderRegenerateButton = () => {
-    return (
-      <button
-        onClick={() => resetMonthlyTasks()}
-        className="mt-4 text-indigo-600 hover:text-indigo-800 flex items-center"
-      >
-        <span className="mr-1">🔄</span> Regenerate default tasks based on current settings
-      </button>
-    );
-  };
-
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="text-xl font-bold mb-6 flex items-center justify-between">
@@ -590,7 +572,7 @@ const ToDoList = () => {
           
           <div className="mt-6 pt-4 border-t border-gray-200 text-sm text-gray-600">
             <p className="mb-2">
-              <span className="font-medium">Tip:</span> Tasks will automatically reset at the start of each month.
+              <span className="font-medium">Note:</span> Tasks will automatically reset at the start of each month.
             </p>
             <p>
               Visit the Settings page to customize your recurring financial tasks and due dates.
